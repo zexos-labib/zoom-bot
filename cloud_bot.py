@@ -4,11 +4,12 @@ import asyncio
 import threading
 from datetime import datetime
 from flask import Flask
+from waitress import serve
 from playwright.async_api import async_playwright
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 # ==============================================================================
-# EDIT YOUR DETAILS HERE
+# CHANGE YOUR DETAILS HERE
 # ==============================================================================
 STUDENT_NAME = "Labib 711268"  # PUT YOUR INDEX NUMBER & NAME HERE
 
@@ -32,7 +33,7 @@ SCHEDULES = [
 ]
 # ==============================================================================
 
-# 1. Web Server for Render Free Web Service Compatibility
+# 1. Production Web Server Setup (For Render Health Checks)
 app = Flask(__name__)
 
 @app.route("/")
@@ -41,10 +42,10 @@ def home():
 
 def start_web_server():
     port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+    serve(app, host="0.0.0.0", port=port)
 
 
-# 2. Zoom Joiner Logic
+# 2. Zoom Joiner Logic via Playwright
 async def join_zoom_meeting(meeting_id, passcode, student_name, duration_min, topic):
     print(f"\n[{datetime.now()}] Joining: {topic}")
     clean_id = str(meeting_id).replace(" ", "").replace("-", "")
@@ -77,7 +78,7 @@ async def join_zoom_meeting(meeting_id, passcode, student_name, duration_min, to
             await browser.close()
 
 
-# 3. Scheduler Setup
+# 3. APScheduler Task Automation Setup
 def start_scheduler():
     scheduler = AsyncIOScheduler()
     for s in SCHEDULES:
@@ -94,8 +95,9 @@ def start_scheduler():
     scheduler.start()
 
 
+# 4. Main Entrypoint
 if __name__ == "__main__":
-    # Start Web Server in background thread
+    # Run the Waitress web server in a background thread so it doesn't block asyncio
     threading.Thread(target=start_web_server, daemon=True).start()
     
     print("Bot is starting...")
