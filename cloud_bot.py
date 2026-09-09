@@ -11,7 +11,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 # ==============================================================================
 # CHANGE YOUR DETAILS HERE
 # ==============================================================================
-STUDENT_NAME = "Labib 711268"  # PUT YOUR INDEX NUMBER & NAME HERE
+STUDENT_NAME = "Index 101 - Your Name"  # PUT YOUR INDEX NUMBER & NAME HERE
 
 SCHEDULES = [
     {
@@ -96,14 +96,19 @@ def start_scheduler():
 
 
 # 4. Main Entrypoint
-if __name__ == "__main__":
-    # Run the Waitress web server in a background thread so it doesn't block asyncio
+async def main():
+    # Start web server in background thread
     threading.Thread(target=start_web_server, daemon=True).start()
     
     print("Bot is starting...")
     start_scheduler()
     
+    # Keep the async loop running indefinitely
+    while True:
+        await asyncio.sleep(3600)
+
+if __name__ == "__main__":
     try:
-        asyncio.get_event_loop().run_forever()
+        asyncio.run(main())
     except (KeyboardInterrupt, SystemExit):
         pass
