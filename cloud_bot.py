@@ -1,12 +1,14 @@
 import os
 import time
 import asyncio
+import threading
 from datetime import datetime
+from flask import Flask
 from playwright.async_api import async_playwright
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 # ==============================================================================
-# CHANGE YOUR DETAILS HERE (REMOVE THE EXAMPLE VALUES AND PUT YOUR OWN)
+# EDIT YOUR DETAILS HERE
 # ==============================================================================
 STUDENT_NAME = "Labib 711268"  # PUT YOUR INDEX NUMBER & NAME HERE
 
@@ -17,7 +19,7 @@ SCHEDULES = [
         "time": "07:30",
         "meeting_id": "7506012370",       # PUT YOUR MORNING MEETING ID HERE
         "passcode": "nova",         # PUT YOUR MORNING PASSCODE HERE
-        "duration_minutes": 60             # STAY TIME (60 MINS)
+        "duration_minutes": 60             # STAY TIME IN MINUTES
     },
     {
         "topic": "Evening Class",
@@ -25,11 +27,24 @@ SCHEDULES = [
         "time": "19:30",
         "meeting_id": "7506012370",       # PUT YOUR EVENING MEETING ID HERE
         "passcode": "nova",         # PUT YOUR EVENING PASSCODE HERE
-        "duration_minutes": 60             # STAY TIME (60 MINS)
+        "duration_minutes": 60             # STAY TIME IN MINUTES
     }
 ]
 # ==============================================================================
 
+# 1. Web Server for Render Free Web Service Compatibility
+app = Flask(__name__)
+
+@app.route("/")
+def home():
+    return "Zoom Attendance Bot is running 24/7!"
+
+def start_web_server():
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
+
+
+# 2. Zoom Joiner Logic
 async def join_zoom_meeting(meeting_id, passcode, student_name, duration_min, topic):
     print(f"\n[{datetime.now()}] Joining: {topic}")
     clean_id = str(meeting_id).replace(" ", "").replace("-", "")
@@ -38,7 +53,7 @@ async def join_zoom_meeting(meeting_id, passcode, student_name, duration_min, to
     async with async_playwright() as p:
         browser = await p.chromium.launch(
             headless=True,
-            args=["--use-fake-ui-for-media-stream", "--no-sandbox"]
+            args=["--use-fake-ui-for-media-stream", "--no-sandbox", "--disable-setuid-sandbox"]
         )
         context = await browser.new_context(permissions=["microphone", "camera"])
         page = await context.new_page()
@@ -51,16 +66,18 @@ async def join_zoom_meeting(meeting_id, passcode, student_name, duration_min, to
             
             join_button = page.locator("button.preview-join-button")
             await join_button.click()
-            print(f"Joined as '{student_name}'!")
+            print(f"Successfully joined '{topic}' as '{student_name}'!")
             
             await asyncio.sleep(duration_min * 60)
-            print(f"Time finished. Leaving: {topic}")
+            print(f"Finished duration ({duration_min} mins). Leaving: {topic}")
 
         except Exception as e:
             print(f"Error joining meeting: {str(e)}")
         finally:
             await browser.close()
 
+
+# 3. Scheduler Setup
 def start_scheduler():
     scheduler = AsyncIOScheduler()
     for s in SCHEDULES:
@@ -76,9 +93,14 @@ def start_scheduler():
         print(f"Scheduled: {s['topic']} ({s['days']}) at {s['time']}")
     scheduler.start()
 
+
 if __name__ == "__main__":
+    # Start Web Server in background thread
+    threading.Thread(target=start_web_server, daemon=True).start()
+    
     print("Bot is starting...")
     start_scheduler()
+    
     try:
         asyncio.get_event_loop().run_forever()
     except (KeyboardInterrupt, SystemExit):
