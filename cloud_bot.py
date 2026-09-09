@@ -3,6 +3,7 @@ import time
 import asyncio
 import threading
 from datetime import datetime
+import pytz
 from flask import Flask
 from waitress import serve
 from playwright.async_api import async_playwright
@@ -11,7 +12,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 # ==============================================================================
 # CHANGE YOUR DETAILS HERE
 # ==============================================================================
-STUDENT_NAME = "Index 101 - Your Name"  # PUT YOUR INDEX NUMBER & NAME HERE
+STUDENT_NAME = "Labib 711268"  # PUT YOUR INDEX NUMBER & NAME HERE
 
 SCHEDULES = [
     {
@@ -80,7 +81,9 @@ async def join_zoom_meeting(meeting_id, passcode, student_name, duration_min, to
 
 # 3. APScheduler Task Automation Setup
 def start_scheduler():
-    scheduler = AsyncIOScheduler()
+    dhaka_tz = pytz.timezone("Asia/Dhaka")
+    scheduler = AsyncIOScheduler(timezone=dhaka_tz)
+    
     for s in SCHEDULES:
         hour, minute = s["time"].split(":")
         scheduler.add_job(
@@ -91,19 +94,19 @@ def start_scheduler():
             minute=int(minute),
             args=[s["meeting_id"], s["passcode"], STUDENT_NAME, s["duration_minutes"], s["topic"]]
         )
-        print(f"Scheduled: {s['topic']} ({s['days']}) at {s['time']}")
+        print(f"Scheduled: {s['topic']} ({s['days']}) at {s['time']} (Asia/Dhaka)")
     scheduler.start()
 
 
 # 4. Main Entrypoint
 async def main():
-    # Start web server in background thread
+    # Run the Waitress web server in a background thread
     threading.Thread(target=start_web_server, daemon=True).start()
     
     print("Bot is starting...")
     start_scheduler()
     
-    # Keep the async loop running indefinitely
+    # Keep the event loop running
     while True:
         await asyncio.sleep(3600)
 
